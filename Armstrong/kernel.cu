@@ -4,23 +4,23 @@
 #include <stdio.h>
 #include <locale>
 
-cudaError_t Armstrong(const int *numbers, int *result, unsigned int size);
+cudaError_t Armstrong(int *result, unsigned int size);
 
-__global__ void Kernel(int *numbers, int *result, unsigned int size)
+__global__ void Kernel(int *result, unsigned int size)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	//printf("%d \n", i);
 	if (i >= size) return;
-	int n = numbers[i];
+	int n = i+100;
 	int a = n % 10;
 	n /= 10;
 	int b = n % 10;
 	n /= 10;
 	int c = n % 10;
 
-	if (a*a*a + b * b*b + c * c*c == numbers[i])
+	if (a*a*a + b * b*b + c * c*c == i+100)
 	{
-		result[i] = numbers[i];
+		result[i] = i+100;
 		//printf(" number[%d] = %d \n", i, numbers[i]);
 	}
 }
@@ -28,15 +28,15 @@ __global__ void Kernel(int *numbers, int *result, unsigned int size)
 int main()
 {
 	const int arraySize = 900;
-	int numbers[arraySize];
+	/*int numbers[arraySize];
 	for (int i = 0; i < arraySize; i++)
 	{
 		numbers[i] = 100 + i;
-	}
+	}*/
 
 	int result[arraySize] = { 0 };
 
-	cudaError_t cudaStatus = Armstrong(numbers, result, arraySize);
+	cudaError_t cudaStatus = Armstrong(result, arraySize);
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "addWithCuda failed!");
 		return 1;
@@ -60,9 +60,8 @@ int main()
 	return 0;
 }
 
-cudaError_t Armstrong(const int *numbers, int *result, unsigned int size)
+cudaError_t Armstrong(int *result, unsigned int size)
 {
-	int *dev_numbers = 0;
 	int *dev_result = 0;
 
 	cudaError_t cudaStatus;
@@ -72,25 +71,13 @@ cudaError_t Armstrong(const int *numbers, int *result, unsigned int size)
 		fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
 		goto Error;
 	}
-
-	cudaStatus = cudaMalloc((void**)&dev_numbers, size * sizeof(int));
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "cudaMalloc failed!");
-		goto Error;
-	}
-
+	
 	cudaStatus = cudaMalloc((void**)&dev_result, size * sizeof(int));
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "cudaMalloc failed!");
 		goto Error;
 	}
-
-	cudaStatus = cudaMemcpy(dev_numbers, numbers, size * sizeof(int), cudaMemcpyHostToDevice);
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "cudaMemcpy failed!");
-		goto Error;
-	}
-
+	
 	cudaStatus = cudaMemcpy(dev_result, result, size * sizeof(int), cudaMemcpyHostToDevice);
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "cudaMemcpy failed!");
@@ -99,7 +86,7 @@ cudaError_t Armstrong(const int *numbers, int *result, unsigned int size)
 
 	dim3 block(32, 1);
 	dim3 grid((size / 32 + 1), 1);
-	Kernel << <grid, block >> > (dev_numbers, dev_result, size);
+	Kernel << <grid, block >> > (dev_result, size);
 
 	cudaStatus = cudaGetLastError();
 	if (cudaStatus != cudaSuccess) {
@@ -120,7 +107,6 @@ cudaError_t Armstrong(const int *numbers, int *result, unsigned int size)
 	}
 
 Error:
-	cudaFree(dev_numbers);
 	cudaFree(dev_result);
 
 	return cudaStatus;
