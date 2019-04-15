@@ -2,9 +2,11 @@
 #include "device_launch_parameters.h"
 
 #include <stdio.h>
-#include <locale>
+#include <clocale>
 
 cudaError_t Armstrong(int *result, unsigned int size);
+
+bool IsArmstrong(int N);
 
 __global__ void Kernel(int *result, unsigned int size)
 {
@@ -27,13 +29,9 @@ __global__ void Kernel(int *result, unsigned int size)
 
 int main()
 {
-	const int arraySize = 900;
-	/*int numbers[arraySize];
-	for (int i = 0; i < arraySize; i++)
-	{
-		numbers[i] = 100 + i;
-	}*/
+	setlocale(LC_CTYPE, "rus");
 
+	const int arraySize = 900;
 	int result[arraySize] = { 0 };
 
 	cudaError_t cudaStatus = Armstrong(result, arraySize);
@@ -41,6 +39,9 @@ int main()
 		fprintf(stderr, "addWithCuda failed!");
 		return 1;
 	}
+
+
+	printf("Результат с GPU: \n");
 
 	for (int i = 0; i<arraySize; i++)
 	{
@@ -50,6 +51,11 @@ int main()
 		}
 	}
 
+	printf("\nРезультат с CPU: \n");
+	for (int i=100; i<1000; i++)
+	{
+		if(IsArmstrong(i)) printf("%d \n", i);
+	}
 
 	cudaStatus = cudaDeviceReset();
 	if (cudaStatus != cudaSuccess) {
@@ -110,4 +116,18 @@ Error:
 	cudaFree(dev_result);
 
 	return cudaStatus;
+}
+
+bool IsArmstrong(int N)
+{
+	int sum = 0;
+	int n = N;
+
+	while (n!=0)
+	{
+		int a = n % 10;
+		sum += a * a*a;
+		n /= 10;
+	}
+	return sum==N;
 }
